@@ -6,6 +6,9 @@ import re
 import json
 import time
 from google.api_core import retry
+import plotly.graph_objects as go
+import plotly.express as px
+import pandas as pd
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -15,16 +18,13 @@ if 'user_performance' not in st.session_state:
     st.session_state.user_performance = {}
 
 def save_user_performance():
-    """Save user performance data to a JSON file."""
     with open('user_performance.json', 'w') as f:
         json.dump(st.session_state.user_performance, f)
 
 def load_user_performance():
-    """Load user performance data from a JSON file."""
     try:
         with open('user_performance.json', 'r') as f:
             data = json.load(f)
-            # Ensure all required keys exist
             for key in data:
                 if 'total' not in data[key]:
                     data[key]['total'] = 0
@@ -34,9 +34,7 @@ def load_user_performance():
     except FileNotFoundError:
         st.session_state.user_performance = {}
 
-
 def update_user_performance(subject, question_type, is_correct):
-    """Update the performance metrics for a user based on question correctness."""
     key = f"{subject}_{question_type}"
     if key not in st.session_state.user_performance:
         st.session_state.user_performance[key] = {
@@ -51,18 +49,43 @@ def update_user_performance(subject, question_type, is_correct):
         st.session_state.user_performance[key]['correct'] += 1
     save_user_performance()
 
-    """Update the performance metrics for a user based on question correctness."""
-    key = f"{subject}_{question_type}"
-    if key not in st.session_state.user_performance:
-        st.session_state.user_performance[key] = {'correct': 0, 'total': 0}
-    st.session_state.user_performance[key]['total'] += 1
-    if is_correct:
-        st.session_state.user_performance[key]['correct'] += 1
-    save_user_performance()
+def plot_performance():
+    """Generate performance visualization using plotly."""
+    if not st.session_state.user_performance:
+        return None
+    
+    data = []
+    for key, stats in st.session_state.user_performance.items():
+        if stats['total'] > 0:
+            accuracy = (stats['correct'] / stats['total']) * 100
+            data.append({
+                'Subject': stats['subject'],
+                'Type': stats['type'],
+                'Accuracy': accuracy,
+                'Correct': stats['correct'],
+                'Total': stats['total']
+            })
+    
+    if not data:
+        return None
+        
+    df = pd.DataFrame(data)
+    
+    # Create a bar chart for accuracy
+    fig = px.bar(
+        df,
+        x='Subject',
+        y='Accuracy',
+        color='Type',
+        barmode='group',
+        title='Performance by Subject and Question Type',
+        labels={'Accuracy': 'Accuracy (%)', 'Subject': 'Subject'}
+    )
+    
+    return fig
 
 @retry.Retry(predicate=retry.if_exception_type(Exception))
 def generate_content_with_retry(model, prompt, max_retries=3, delay=5):
-    """Retry mechanism for making API calls to the Google Gemini model."""
     for attempt in range(max_retries):
         try:
             return model.generate_content(prompt)
@@ -73,7 +96,6 @@ def generate_content_with_retry(model, prompt, max_retries=3, delay=5):
             time.sleep(delay)
 
 def check_api_key():
-    """Validate the Google API key by making a test API call."""
     try:
         model = genai.GenerativeModel('gemini-pro')
         generate_content_with_retry(model, "Test")
@@ -83,13 +105,12 @@ def check_api_key():
         return False
 
 def parse_mcq_response(raw_output):
-    """Parse MCQ questions from the API response."""
     questions = []
     question_pattern = r'Q:?\s*(.+?)(?=(?:\nA\)|$))'
-    options_pattern = r'([A-D]\)[\s\S]+?)(?=(?:[A-D]\)|Correct Answer:|$))'
+    options_pattern = r'([A-D]\)[\s\S]+?)(?=(?:[A-D]\)|Correct Answer:|Hint:|$))'
     answer_pattern = r'Correct Answer:\s*([A-D])'
+    hint_pattern = r'Hint:\s*(.+?)(?=(?:\n\nQ|$))'
     
-    # Split the raw output into individual questions
     question_blocks = raw_output.split('\n\n')
     
     for block in question_blocks:
@@ -97,30 +118,31 @@ def parse_mcq_response(raw_output):
             continue
             
         try:
-            # Extract question text
             question_match = re.search(question_pattern, block, re.DOTALL)
             if not question_match:
                 continue
                 
             question_text = question_match.group(1).strip()
             
-            # Extract options
             options = re.findall(options_pattern, block, re.DOTALL)
-            if len(options) != 4:  # Ensure we have exactly 4 options
+            if len(options) != 4:
                 continue
                 
-            # Extract correct answer
             answer_match = re.search(answer_pattern, block)
             if not answer_match:
                 continue
                 
             correct_answer = answer_match.group(1).strip()
             
-            # Create question dictionary
+            # Extract hint if available
+            hint_match = re.search(hint_pattern, block, re.DOTALL)
+            hint = hint_match.group(1).strip() if hint_match else "No hint available"
+            
             question_dict = {
                 'question': question_text,
                 'options': [opt.strip() for opt in options],
-                'correct_answer': correct_answer
+                'correct_answer': correct_answer,
+                'hint': hint
             }
             
             questions.append(question_dict)
@@ -132,7 +154,6 @@ def parse_mcq_response(raw_output):
     return questions
 
 def parse_numerical_response(raw_output):
-    """Parse numerical questions from the API response."""
     questions = []
     current_question = {}
     
@@ -142,12 +163,22 @@ def parse_numerical_response(raw_output):
         if line.startswith('Q'):
             if current_question:
                 questions.append(current_question)
-            current_question = {'question': line.split(':', 1)[1].strip(), 'answer': None}
+            current_question = {
+                'question': line.split(':', 1)[1].strip(),
+                'answer': None,
+                'options': [],
+                'hint': None
+            }
         elif line.startswith('Answer:'):
             try:
                 current_question['answer'] = float(line.split(':', 1)[1].strip())
             except ValueError:
                 continue
+        elif line.startswith('Options:'):
+            options_text = line.split(':', 1)[1].strip()
+            current_question['options'] = [float(x.strip()) for x in options_text.split(',')]
+        elif line.startswith('Hint:'):
+            current_question['hint'] = line.split(':', 1)[1].strip()
     
     if current_question and current_question['answer'] is not None:
         questions.append(current_question)
@@ -155,7 +186,6 @@ def parse_numerical_response(raw_output):
     return questions
 
 def generate_questions(subject, difficulty_level, num_questions, question_type):
-    """Generate questions using the Gemini API."""
     try:
         if question_type == "MCQ":
             prompt = f"""Generate exactly {num_questions} GATE exam style multiple choice questions for the subject '{subject}' at {difficulty_level} difficulty level.
@@ -168,21 +198,15 @@ B) [Second option]
 C) [Third option]
 D) [Fourth option]
 Correct Answer: [Write only A or B or C or D]
+Hint: [Provide a helpful hint without giving away the answer]
 
 Important:
 - Each question must have exactly 4 options (A, B, C, D)
 - Correct Answer must be one of: A, B, C, or D
+- Include a hint that helps understand the concept without revealing the answer
 - Make sure the questions are like actual GATE exam questions
 - Leave a blank line between questions
-- Do not include any explanations or additional text
-
-Example format:
-Q: What is the time complexity of binary search?
-A) O(n)
-B) O(log n)
-C) O(n log n)
-D) O(n²)
-Correct Answer: B"""
+- Do not include any explanations or additional text"""
         else:
             prompt = f"""Generate exactly {num_questions} GATE exam style numerical questions for the subject '{subject}' at {difficulty_level} difficulty level.
 
@@ -190,12 +214,15 @@ For each question, strictly follow this format:
 
 Q: [Question text with all necessary information]
 Answer: [Single numerical value]
+Options: [Four numerical options separated by commas, including the correct answer]
+Hint: [Provide a helpful hint without giving away the answer]
 
 Important:
 - Each answer must be a single number
+- Provide exactly 4 numerical options, with the correct answer being one of them
+- Include a hint that helps solve the problem without giving away the answer
 - Do not include units in the answer
 - Leave a blank line between questions
-- Do not include any explanations
 - Make questions similar to actual GATE numerical problems"""
 
         model = genai.GenerativeModel('gemini-pro')
@@ -203,22 +230,22 @@ Important:
         
         if question_type == "MCQ":
             questions = parse_mcq_response(response.text)
-            if not questions:
-                st.error("Failed to generate valid MCQ questions. Response format was incorrect.")
-                st.write("Raw response for debugging:")
-                st.code(response.text)
-                return []
-            return questions
         else:
-            return parse_numerical_response(response.text)
+            questions = parse_numerical_response(response.text)
+            
+        if not questions:
+            st.error("Failed to generate valid questions. Response format was incorrect.")
+            st.write("Raw response for debugging:")
+            st.code(response.text)
+            return []
+            
+        return questions
 
     except Exception as e:
         st.error(f"Error generating questions: {str(e)}")
         return []
 
-
 def main():
-    """Main function to run the Streamlit app."""
     load_user_performance()
     st.set_page_config(page_title="GATE Exam Question Generator", page_icon="📝", layout="wide")
 
@@ -249,7 +276,8 @@ def main():
             if not check_api_key():
                 st.error("Please check your API key and try again.")
             else:
-                questions = generate_questions(subject, difficulty_level, num_questions, question_type)
+                with st.spinner("Generating questions..."):
+                    questions = generate_questions(subject, difficulty_level, num_questions, question_type)
                 
                 if questions:
                     st.session_state["questions"] = questions
@@ -269,6 +297,10 @@ def main():
             st.markdown(f'### Question {i}')
             st.write(question['question'])
             
+            # Add a collapsible section for hints
+            with st.expander("Show Hint 💡"):
+                st.write(question.get('hint', 'No hint available'))
+            
             if question_type == "MCQ":
                 options = question['options']
                 user_answer = st.radio(f"Select your answer for Question {i}:", 
@@ -280,10 +312,17 @@ def main():
                     st.write(option)
                     
             else:  # Numerical
-                user_answer = st.number_input(f"Enter your numerical answer for Question {i}:",
-                                            value=0.0,
-                                            step=0.1,
-                                            key=f"q_{i}")
+                # Display options as radio buttons
+                options = question.get('options', [])
+                if options:
+                    user_answer = st.radio(f"Select your answer for Question {i}:",
+                                         options,
+                                         key=f"q_{i}")
+                else:
+                    user_answer = st.number_input(f"Enter your numerical answer for Question {i}:",
+                                                value=0.0,
+                                                step=0.1,
+                                                key=f"q_{i}")
 
         if st.button("Submit"):
             total_correct = 0
@@ -297,10 +336,14 @@ def main():
                     st.write(f"Your answer: {user_ans}")
                     st.write(f"Correct answer: {question['correct_answer']}")
                 else:
-                    is_correct = abs(float(user_ans) - float(question['answer'])) < 0.1
+                    correct_answer = float(question['answer'])
+                    if isinstance(user_ans, float):
+                        is_correct = abs(user_ans - correct_answer) < 0.1
+                    else:
+                        is_correct = abs(float(user_ans) - correct_answer) < 0.1
                     st.write(f"Question {i}:")
                     st.write(f"Your answer: {user_ans}")
-                    st.write(f"Correct answer: {question['answer']}")
+                    st.write(f"Correct answer: {correct_answer}")
                 
                 if is_correct:
                     st.success("Correct! ✅")
@@ -312,18 +355,24 @@ def main():
             
             st.markdown(f"### Final Score: {total_correct}/{len(st.session_state['questions'])}")
             
-            # Display performance statistics with error handling
-            if st.session_state.user_performance:
-                st.markdown("### Your Performance Statistics")
-                for key, stats in st.session_state.user_performance.items():
-                    try:
-                        if isinstance(stats, dict) and stats.get('total', 0) > 0:
-                            accuracy = (stats.get('correct', 0) / stats['total']) * 100
-                            subject = stats.get('subject', key.split('_')[0])
-                            q_type = stats.get('type', key.split('_')[1])
-                            st.write(f"{subject} ({q_type}): {accuracy:.1f}% ({stats['correct']}/{stats['total']})")
-                    except Exception as e:
-                        st.warning(f"Error displaying stats for {key}: {str(e)}")
+            # Display performance statistics and visualization
+            st.markdown("### Your Performance Statistics")
+            
+            # Create and display the performance visualization
+            fig = plot_performance()
+            if fig:
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Display detailed statistics
+            for key, stats in st.session_state.user_performance.items():
+                try:
+                    if isinstance(stats, dict) and stats.get('total', 0) > 0:
+                        accuracy = (stats.get('correct', 0) / stats['total']) * 100
+                        subject = stats.get('subject', key.split('_')[0])
+                        q_type = stats.get('type', key.split('_')[1])
+                        st.write(f"{subject} ({q_type}): {accuracy:.1f}% ({stats['correct']}/{stats['total']})")
+                except Exception as e:
+                    st.warning(f"Error displaying stats for {key}: {str(e)}")
 
     if st.button("Start New Quiz"):
         st.session_state.clear()
