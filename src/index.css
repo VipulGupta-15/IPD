@@ -1,0 +1,145 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 169.5 88.7% 42.9%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83% 53.3%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    font-family: 'Poppins', sans-serif;
+    scroll-behavior: smooth;
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-background text-foreground font-light;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-lg border border-white/30 rounded-2xl shadow-lg;
+  }
+  
+  .neon-border {
+    @apply border-2 relative before:absolute before:inset-0 before:rounded-[inherit] before:p-[2px] before:bg-gradient-to-r before:from-neon-pink before:to-light-teal before:content-[''] before:-z-10 before:animate-pulse-glow;
+  }
+  
+  .glow-effect {
+    @apply relative before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-gradient-to-r before:from-light-teal before:to-deep-blue before:opacity-75 before:blur-xl before:transition-all before:duration-300 hover:before:opacity-100;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-primary text-white rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-lg hover:shadow-primary/50 hover:translate-y-[-2px] active:translate-y-[0px] overflow-hidden relative;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-deep-blue border-2 border-light-teal rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-md hover:shadow-light-teal/30 hover:translate-y-[-2px] active:translate-y-[0px];
+  }
+  
+  .btn-outline {
+    @apply bg-transparent border-2 border-white/50 text-white rounded-full font-medium px-6 py-3 transition-all duration-300 hover:border-white hover:bg-white/10 hover:translate-y-[-2px] active:translate-y-[0px];
+  }
+  
+  .input-glow {
+    @apply bg-white/5 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 text-white outline-none transition-all duration-300 focus:border-light-teal focus:ring-2 focus:ring-light-teal/30;
+  }
+  
+  .float-label-input {
+    @apply relative;
+  }
+  
+  .float-label-input input {
+    @apply pt-5 pb-2;
+  }
+  
+  .float-label-input label {
+    @apply absolute left-4 top-4 text-white/70 transition-all duration-200 pointer-events-none;
+  }
+  
+  .float-label-input input:focus ~ label,
+  .float-label-input input:not(:placeholder-shown) ~ label {
+    @apply text-xs top-2 text-light-teal;
+  }
+  
+  .role-tab {
+    @apply px-6 py-3 font-medium text-white/70 border-b-2 border-transparent transition-all duration-300 hover:text-white;
+  }
+  
+  .role-tab.active {
+    @apply text-white border-light-teal;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300 hover:translate-y-[-5px] hover:shadow-xl;
+  }
+  
+  .animate-delay-100 {
+    animation-delay: 100ms;
+  }
+  
+  .animate-delay-200 {
+    animation-delay: 200ms;
+  }
+  
+  .animate-delay-300 {
+    animation-delay: 300ms;
+  }
+  
+  .animate-delay-400 {
+    animation-delay: 400ms;
+  }
+  
+  .animate-delay-500 {
+    animation-delay: 500ms;
+  }
+}
