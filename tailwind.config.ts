@@ -64,10 +64,10 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         // Updated custom colors for dark theme
-        "deep-blue": "#0a0a0a", // Darker near-black instead of blue
-        "light-teal": "#00ffaa", // Neon green instead of teal
-        "neon-pink": "#ff007a", // Adjusted to a more vibrant neon pink
-        "neon-orange": "#ff7700", // Kept as is, works with dark theme
+        "deep-blue": "#0D0D0D", // Slightly lighter black for subtle contrast
+        "light-teal": "#00D4AA", // Bright teal with more vibrancy to stand out
+        "neon-pink": "#FF1493", // Deeper and richer neon pink (Hot Pink variant)
+        "neon-orange": "#FF8C00", // Slightly muted orange to avoid harsh contrast
       },
       borderRadius: {
         lg: "var(--radius)",

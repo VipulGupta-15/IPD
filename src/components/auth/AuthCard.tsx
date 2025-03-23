@@ -149,7 +149,7 @@ const AuthCard: React.FC<AuthCardProps> = ({ isLogin = false }) => {
             className={`w-full rounded-md p-2.5 mt-2 text-sm font-medium ${
               isLogin
                 ? 'bg-light-teal/10 text-light-teal hover:bg-light-teal/20'
-                : 'bg-light-teal text-white hover:bg-light-teal/90'
+                : 'bg-light-teal text-green hover:bg-light-teal/90'
             } transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <span className="flex items-center justify-center">
