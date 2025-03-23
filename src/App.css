@@ -1,3 +1,4 @@
+/* app.css: */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -12,10 +13,10 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+  filter: drop-shadow(0 0 2em #ff007a80); /* Neon pink glow */
 }
 .logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop-shadow(0 0 2em #00ffaa80); /* Neon green glow */
 }
 
 @keyframes logo-spin {
@@ -38,5 +39,5 @@
 }
 
 .read-the-docs {
-  color: #888;
+  color: #ccc; /* Light gray for contrast on dark background */
 }

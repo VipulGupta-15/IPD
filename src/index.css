@@ -1,4 +1,4 @@
-
+/* index.css: */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
@@ -7,44 +7,44 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 10%; /* Near-black background */
+    --foreground: 0 0% 90%; /* Light gray text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 15%; /* Slightly lighter blackish-gray for cards */
+    --card-foreground: 0 0% 90%; /* Light gray text */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 15%; /* Same as card */
+    --popover-foreground: 0 0% 90%; /* Light gray text */
 
-    --primary: 221.2 83% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 340 100% 50%; /* Neon pink */
+    --primary-foreground: 0 0% 10%; /* Near-black text */
 
-    --secondary: 169.5 88.7% 42.9%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 160 100% 45%; /* Neon green */
+    --secondary-foreground: 0 0% 90%; /* Light gray text */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 20%; /* Dark gray */
+    --muted-foreground: 0 0% 60%; /* Medium gray */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 340 100% 50%; /* Neon pink */
+    --accent-foreground: 0 0% 10%; /* Near-black text */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 80% 50%; /* Bright red */
+    --destructive-foreground: 0 0% 90%; /* Light gray text */
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83% 53.3%;
+    --border: 0 0% 25%; /* Dark gray borders */
+    --input: 0 0% 25%; /* Dark gray inputs */
+    --ring: 340 100% 50%; /* Neon pink ring */
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 12%; /* Slightly lighter blackish-gray */
+    --sidebar-foreground: 0 0% 90%; /* Light gray text */
+    --sidebar-primary: 340 100% 50%; /* Neon pink */
+    --sidebar-primary-foreground: 0 0% 10%; /* Near-black text */
+    --sidebar-accent: 0 0% 20%; /* Dark gray */
+    --sidebar-accent-foreground: 0 0% 90%; /* Light gray text */
+    --sidebar-border: 0 0% 25%; /* Dark gray border */
+    --sidebar-ring: 340 100% 50%; /* Neon pink ring */
   }
 }
 
@@ -62,36 +62,37 @@
   body {
     @apply bg-background text-foreground font-light;
     overflow-x: hidden;
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a); /* Blackish gradient */
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/10 backdrop-blur-lg border border-white/30 rounded-2xl shadow-lg;
+    @apply bg-black/70 backdrop-blur-lg border border-gray-800/50 rounded-2xl shadow-lg;
   }
   
   .neon-border {
-    @apply border-2 relative before:absolute before:inset-0 before:rounded-[inherit] before:p-[2px] before:bg-gradient-to-r before:from-neon-pink before:to-light-teal before:content-[''] before:-z-10 before:animate-pulse-glow;
+    @apply border-2 relative before:absolute before:inset-0 before:rounded-[inherit] before:p-[2px] before:bg-gradient-to-r before:from-pink-500 before:to-green-400 before:content-[''] before:-z-10 before:animate-pulse;
   }
   
   .glow-effect {
-    @apply relative before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-gradient-to-r before:from-light-teal before:to-deep-blue before:opacity-75 before:blur-xl before:transition-all before:duration-300 hover:before:opacity-100;
+    @apply relative before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-gradient-to-r before:from-pink-500 before:to-green-400 before:opacity-40 before:blur-xl before:transition-all before:duration-300 hover:before:opacity-80;
   }
   
   .btn-primary {
-    @apply bg-gradient-primary text-white rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-lg hover:shadow-primary/50 hover:translate-y-[-2px] active:translate-y-[0px] overflow-hidden relative;
+    @apply bg-gradient-to-r from-pink-500 to-green-400 text-black rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(255,0,122,0.6)] hover:translate-y-[-2px] active:translate-y-[0px] overflow-hidden relative;
   }
   
   .btn-secondary {
-    @apply bg-white text-deep-blue border-2 border-light-teal rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-md hover:shadow-light-teal/30 hover:translate-y-[-2px] active:translate-y-[0px];
+    @apply bg-black text-green-400 border-2 border-green-400 rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-md hover:shadow-[0_0_10px_rgba(0,255,170,0.5)] hover:translate-y-[-2px] active:translate-y-[0px];
   }
   
   .btn-outline {
-    @apply bg-transparent border-2 border-white/50 text-white rounded-full font-medium px-6 py-3 transition-all duration-300 hover:border-white hover:bg-white/10 hover:translate-y-[-2px] active:translate-y-[0px];
+    @apply bg-transparent border-2 border-gray-700 text-white rounded-full font-medium px-6 py-3 transition-all duration-300 hover:border-pink-500 hover:bg-pink-500/10 hover:translate-y-[-2px] active:translate-y-[0px];
   }
   
   .input-glow {
-    @apply bg-white/5 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 text-white outline-none transition-all duration-300 focus:border-light-teal focus:ring-2 focus:ring-light-teal/30;
+    @apply bg-black/60 backdrop-blur-md border border-gray-800 rounded-xl px-4 py-3 text-white outline-none transition-all duration-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/40;
   }
   
   .float-label-input {
@@ -103,24 +104,24 @@
   }
   
   .float-label-input label {
-    @apply absolute left-4 top-4 text-white/70 transition-all duration-200 pointer-events-none;
+    @apply absolute left-4 top-4 text-gray-500 transition-all duration-300 pointer-events-none;
   }
   
   .float-label-input input:focus ~ label,
   .float-label-input input:not(:placeholder-shown) ~ label {
-    @apply text-xs top-2 text-light-teal;
+    @apply text-xs top-2 text-pink-500;
   }
   
   .role-tab {
-    @apply px-6 py-3 font-medium text-white/70 border-b-2 border-transparent transition-all duration-300 hover:text-white;
+    @apply px-6 py-3 font-medium text-gray-500 border-b-2 border-transparent transition-all duration-300 hover:text-white;
   }
   
   .role-tab.active {
-    @apply text-white border-light-teal;
+    @apply text-pink-500 border-pink-500;
   }
   
   .card-hover {
-    @apply transition-all duration-300 hover:translate-y-[-5px] hover:shadow-xl;
+    @apply transition-all duration-300 hover:translate-y-[-5px] hover:shadow-[0_0_20px_rgba(255,0,122,0.3)];
   }
   
   .animate-delay-100 {
