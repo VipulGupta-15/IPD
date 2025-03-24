@@ -80,7 +80,7 @@
   }
   
   .btn-primary {
-    @apply bg-gradient-to-r from-pink-500 to-green-400 text-black rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(255,0,122,0.6)] hover:translate-y-[-2px] active:translate-y-[0px] overflow-hidden relative;
+    @apply bg-gradient-to-r from-white to-light-teal text-black rounded-full font-medium px-6 py-3 transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(255,0,122,0.6)] hover:translate-y-[-2px] active:translate-y-[0px] overflow-hidden relative;
   }
   
   .btn-secondary {
