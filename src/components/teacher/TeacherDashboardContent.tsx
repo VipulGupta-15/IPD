@@ -1,264 +1,195 @@
-import React from 'react';
-import {
-  FileUp,
-  FilePlus,
-  Calendar,
-  ChevronRight,
-  Plus,
-  MoreVertical,
-  FileText,
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { FileUp, FilePlus, Calendar } from 'lucide-react';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { Test } from '../../types';
 
 const TeacherDashboardContent: React.FC = () => {
+  const [tests, setTests] = useState<Test[]>([]);
+  const [students, setStudents] = useState<{ _id: string; name: string; email: string }[]>([]);
+  const [selectedTest, setSelectedTest] = useState<string>('');
+  const [studentIds, setStudentIds] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [results, setResults] = useState<{ [studentId: string]: { score: number; answers: { [questionId: string]: string } } }>({});
+
+  useEffect(() => {
+    fetchTests();
+    fetchStudents();
+  }, []);
+
+  const fetchTests = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await axios.get('http://localhost:5001/api/user-tests', { headers: { Authorization: `Bearer ${token}` } });
+      setTests(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch tests');
+    }
+  };
+
+  const fetchStudents = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await axios.get('http://localhost:5001/api/students', { headers: { Authorization: `Bearer ${token}` } });
+      setStudents(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch students');
+    }
+  };
+
+  const assignTest = async () => {
+    const token = localStorage.getItem('token');
+    if (!selectedTest || !studentIds.length || !startTime || !endTime) {
+      toast.error('Please fill all fields');
+      return;
+    }
+    try {
+      await axios.post(
+        'http://localhost:5001/api/assign-test',
+        { test_name: selectedTest, student_ids: studentIds, start_time: startTime, end_time: endTime },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('Test assigned');
+      fetchTests();
+    } catch (error) {
+      toast.error('Failed to assign test');
+    }
+  };
+
+  const manageTest = async (testName: string, action: 'start' | 'stop') => {
+    const token = localStorage.getItem('token');
+    try {
+      await axios.post(
+        'http://localhost:5001/api/manage-test',
+        { test_name: testName, action },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Test ${action}ed`);
+      fetchTests();
+    } catch (error) {
+      toast.error(`Failed to ${action} test`);
+    }
+  };
+
+  const viewResults = async (testName: string) => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await axios.get(`http://localhost:5001/api/student-results?test_name=${testName}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setResults(response.data.results);
+    } catch (error) {
+      toast.error('Failed to fetch results');
+    }
+  };
+
   return (
-    <div className="animate-fade-in">
-      {/* Greeting Section */}
-      <div className="glass-card p-6 mb-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div>
-            <h2 className="text-2xl font-bold mb-2">
-              Welcome back, <span className="text-light-teal">John</span>!
-            </h2>
-            <p className="text-white/70">
-              Here's what's happening with your assessments today.
-            </p>
-          </div>
-          <button className="btn-primary mt-4 md:mt-0">
-            <span className="flex items-center">
-              New Assessment
-              <Plus size={16} className="ml-2" />
-            </span>
-          </button>
-        </div>
+    <div className="p-6 space-y-6">
+      <div className="glass-card p-6 rounded-xl shadow-lg">
+        <h2 className="text-2xl font-semibold text-light-teal">Dashboard</h2>
+        <p className="text-white/80 mt-1">Overview of your assessments</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="glass-card p-6 hover:translate-y-[-5px] transition-all duration-300">
-          <div className="flex justify-between items-start">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { title: 'Total Tests', value: tests.length, icon: FileUp },
+          { title: 'MCQs Generated', value: tests.reduce((sum, test) => sum + test.mcqs.length, 0), icon: FilePlus },
+          { title: 'Active Tests', value: tests.filter(t => t.status === 'active').length, icon: Calendar },
+        ].map((stat, idx) => (
+          <div key={idx} className="glass-card p-6 rounded-xl shadow-lg flex items-center justify-between">
             <div>
-              <p className="text-white/70 text-sm mb-1">Total PDFs</p>
-              <h3 className="text-3xl font-bold">24</h3>
+              <p className="text-white/60 text-sm">{stat.title}</p>
+              <h3 className="text-3xl font-bold text-white">{stat.value}</h3>
             </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-light-teal/20 to-light-teal/10 flex items-center justify-center">
-              <FileUp size={20} className="text-light-teal" />
-            </div>
+            <stat.icon size={24} className="text-light-teal" />
           </div>
-          <div className="mt-4">
-            <span className="text-green-400 text-sm flex items-center">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              3 new this week
-            </span>
-          </div>
-        </div>
-
-        <div className="glass-card p-6 hover:translate-y-[-5px] transition-all duration-300">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-white/70 text-sm mb-1">MCQs Generated</p>
-              <h3 className="text-3xl font-bold">459</h3>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-pink/20 to-neon-pink/10 flex items-center justify-center">
-              <FilePlus size={20} className="text-neon-pink" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-green-400 text-sm flex items-center">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              42 new this week
-            </span>
-          </div>
-        </div>
-
-        <div className="glass-card p-6 hover:translate-y-[-5px] transition-all duration-300">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-white/70 text-sm mb-1">Tests Created</p>
-              <h3 className="text-3xl font-bold">12</h3>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-light-teal/20 to-deep-blue/20 flex items-center justify-center">
-              <Calendar size={20} className="text-white" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <span className="text-green-400 text-sm flex items-center">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              2 new this week
-            </span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Recent Activity */}
-      <div className="glass-card p-6 mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Recent Activity</h3>
-          <button className="text-white/70 hover:text-white text-sm flex items-center">
-            View All
-            <ChevronRight size={16} className="ml-1" />
-          </button>
-        </div>
-
+      <div className="glass-card p-6 rounded-xl shadow-lg">
+        <h3 className="text-xl font-semibold text-light-teal mb-4">Assign Test</h3>
         <div className="space-y-4">
-          <div className="flex items-start p-3 hover:bg-white/5 rounded-lg transition-colors">
-            <div className="w-10 h-10 rounded-full bg-light-teal/20 flex items-center justify-center mr-4">
-              <FileUp size={16} className="text-light-teal" />
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between">
-                <p className="font-medium">Biology Chapter 5.pdf uploaded</p>
-                <span className="text-white/50 text-sm">2h ago</span>
-              </div>
-              <p className="text-white/70 text-sm">You uploaded a new PDF document</p>
-            </div>
-          </div>
-
-          <div className="flex items-start p-3 hover:bg-white/5 rounded-lg transition-colors">
-            <div className="w-10 h-10 rounded-full bg-neon-pink/20 flex items-center justify-center mr-4">
-              <FilePlus size={16} className="text-neon-pink" />
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between">
-                <p className="font-medium">Generated 35 MCQs</p>
-                <span className="text-white/50 text-sm">5h ago</span>
-              </div>
-              <p className="text-white/70 text-sm">From Chemistry Unit 3.pdf</p>
-            </div>
-          </div>
-
-          <div className="flex items-start p-3 hover:bg-white/5 rounded-lg transition-colors">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center mr-4">
-              <Calendar size={16} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between">
-                <p className="font-medium">Test scheduled</p>
-                <span className="text-white/50 text-sm">Yesterday</span>
-              </div>
-              <p className="text-white/70 text-sm">Physics Mid-term for Class 11A</p>
-            </div>
-          </div>
+          <select
+            value={selectedTest}
+            onChange={(e) => setSelectedTest(e.target.value)}
+            className="w-full bg-deep-blue/70 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-light-teal transition-all"
+          >
+            <option value="">Select Test</option>
+            {tests.map((test) => (
+              <option key={test.test_name} value={test.test_name}>{test.test_name}</option>
+            ))}
+          </select>
+          <select
+            multiple
+            value={studentIds}
+            onChange={(e) => setStudentIds(Array.from(e.target.selectedOptions, option => option.value))}
+            className="w-full bg-deep-blue/70 border border-white/10 rounded-lg p-3 text-white h-32 focus:outline-none focus:ring-2 focus:ring-light-teal transition-all"
+          >
+            {students.map((student) => (
+              <option key={student._id} value={student._id}>{student.name} ({student.email})</option>
+            ))}
+          </select>
+          <input
+            type="datetime-local"
+            value={startTime.slice(0, 16)}
+            onChange={(e) => setStartTime(new Date(e.target.value).toISOString())}
+            className="w-full bg-deep-blue/70 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-light-teal transition-all"
+          />
+          <input
+            type="datetime-local"
+            value={endTime.slice(0, 16)}
+            onChange={(e) => setEndTime(new Date(e.target.value).toISOString())}
+            className="w-full bg-deep-blue/70 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-light-teal transition-all"
+          />
+          <button
+            onClick={assignTest}
+            className="w-full bg-light-teal text-deep-blue font-semibold py-2 rounded-lg hover:bg-light-teal/80 transition-colors"
+          >
+            Assign Test
+          </button>
         </div>
       </div>
 
-      {/* Recent Documents */}
-      <div className="glass-card p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Recent Documents</h3>
-          <button className="text-white/70 hover:text-white text-sm flex items-center">
-            View All
-            <ChevronRight size={16} className="ml-1" />
-          </button>
-        </div>
-
+      <div className="glass-card p-6 rounded-xl shadow-lg">
+        <h3 className="text-xl font-semibold text-light-teal mb-4">Recent Tests</h3>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-full">
+          <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-3 px-4 text-white/70 text-sm font-medium">Name</th>
-                <th className="text-left py-3 px-4 text-white/70 text-sm font-medium">Date</th>
-                <th className="text-left py-3 px-4 text-white/70 text-sm font-medium">MCQs</th>
-                <th className="text-left py-3 px-4 text-white/70 text-sm font-medium">Status</th>
-                <th className="text-right py-3 px-4 text-white/70 text-sm font-medium">Actions</th>
+              <tr className="border-b border-white/10 text-white/60">
+                <th className="py-3 px-4">Name</th>
+                <th className="py-3 px-4">PDF</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-white/5 hover:bg-white/5">
-                <td className="py-3 px-4">
-                  <div className="flex items-center">
-                    <FileText size={16} className="text-light-teal mr-2" />
-                    <span>Physics Chapter 1.pdf</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-white/70">Today</td>
-                <td className="py-3 px-4">42</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
-                    Complete
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <button className="text-white/70 hover:text-white">
-                    <MoreVertical size={16} />
-                  </button>
-                </td>
-              </tr>
-              <tr className="border-b border-white/5 hover:bg-white/5">
-                <td className="py-3 px-4">
-                  <div className="flex items-center">
-                    <FileText size={16} className="text-light-teal mr-2" />
-                    <span>Chemistry Unit 3.pdf</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-white/70">Yesterday</td>
-                <td className="py-3 px-4">35</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
-                    Complete
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <button className="text-white/70 hover:text-white">
-                    <MoreVertical size={16} />
-                  </button>
-                </td>
-              </tr>
-              <tr className="border-b border-white/5 hover:bg-white/5">
-                <td className="py-3 px-4">
-                  <div className="flex items-center">
-                    <FileText size={16} className="text-light-teal mr-2" />
-                    <span>Biology Chapter 5.pdf</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-white/70">2 days ago</td>
-                <td className="py-3 px-4">28</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs">
-                    In Progress
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <button className="text-white/70 hover:text-white">
-                    <MoreVertical size={16} />
-                  </button>
-                </td>
-              </tr>
+              {tests.map((test) => (
+                <tr key={test.test_name} className="border-b border-white/05 hover:bg-white/05 transition-colors">
+                  <td className="py-3 px-4 text-white">{test.test_name}</td>
+                  <td className="py-3 px-4 text-white/80">{test.pdf_name}</td>
+                  <td className="py-3 px-4 text-white/80">{test.status}</td>
+                  <td className="py-3 px-4 text-right space-x-3">
+                    <button onClick={() => manageTest(test.test_name, 'start')} className="text-light-teal hover:text-white">Start</button>
+                    <button onClick={() => manageTest(test.test_name, 'stop')} className="text-light-teal hover:text-white">Stop</button>
+                    <button onClick={() => viewResults(test.test_name)} className="text-light-teal hover:text-white">Results</button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+        {Object.keys(results).length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-lg font-semibold text-light-teal mb-2">Results</h4>
+            {Object.entries(results).map(([studentId, result]) => (
+              <div key={studentId} className="p-3 bg-white/05 rounded-lg mb-2">
+                <p className="text-white">Student ID: {studentId}</p>
+                <p className="text-white/80">Score: {result.score}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
