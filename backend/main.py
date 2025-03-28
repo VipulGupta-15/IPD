@@ -60,7 +60,7 @@ def generate_mcq(text, groq_api_key, num_questions=5, difficulty="medium"):
         f"Return a JSON array only.\n\nText:\n{text}"
     )
     completion = client.chat.completions.create(
-        model="mixtral-8x7b-32768",  # Lighter model for performance
+        model="llama-3.3-70b-versatile",  # Lighter model for performance
         messages=[
             {"role": "system", "content": "You are an AI expert in question generation."},
             {"role": "user", "content": prompt}

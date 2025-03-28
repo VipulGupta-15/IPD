@@ -18,3 +18,13 @@ export interface Test {
   end_time: string | null;
   result: { [studentId: string]: { score: number; answers: { [questionId: string]: string } } };
 }
+
+export interface TestResult {
+  testName: string;
+  date: string; // ISO string, e.g., "2025-03-23T12:00:00Z"
+  score: number; // Correct answers
+  total: number; // Total questions
+  percentage: number; // Score percentage
+  answers: string[]; // Student's answers for review
+  mcqs: MCQ[]; // Add MCQs to TestResult for review
+}
