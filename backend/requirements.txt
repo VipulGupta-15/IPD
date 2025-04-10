@@ -7,3 +7,5 @@ groq
 PyMuPDF
 python-dotenv
 bcrypt
+CORS
+pytz

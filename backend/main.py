@@ -16,6 +16,13 @@ from bson.errors import InvalidId
 import random
 import csv
 import io
+import pytz
+from datetime import datetime
+IST = pytz.timezone('Asia/Kolkata')
+
+
+def get_ist_time():
+    return datetime.now(IST).isoformat()
 
 # Logging setup
 logging.basicConfig(
@@ -102,7 +109,7 @@ def generate_mcq_with_relevance(text, groq_api_key, num_questions=2, difficulty=
             f"Return a JSON array only.\n\nText:\n{text}"
         )
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[
                 {"role": "system", "content": "You are an AI expert in question generation."},
                 {"role": "user", "content": prompt}
@@ -195,7 +202,7 @@ def signup():
             "email": email,
             "password": hashed_password,
             "role": role,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": get_ist_time()
         }
         
         result = users_collection.insert_one(user)
@@ -346,10 +353,10 @@ def generate_mcqs_endpoint():
             "test_name": test_name,
             "pdf_name": pdf_name,
             "mcqs": mcqs,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": get_ist_time(),
             "status": "active" if is_student else "generated",
             "assigned_to": [user_id] if is_student else [],
-            "start_time": datetime.utcnow().isoformat() if is_student else None,
+            "start_time": get_ist_time() if is_student else None,
             "end_time": None,
             "duration": 30 if is_student else None,
             "result": {}
@@ -360,7 +367,7 @@ def generate_mcqs_endpoint():
                 {"_id": existing_test["_id"]},
                 {"$set": {
                     "mcqs": mcqs,
-                    "created_at": datetime.utcnow().isoformat(),
+                    "created_at": get_ist_time(),
                 }}
             )
             logging.info(f"Updated existing test {test_name} with {len(mcqs)} MCQs")
@@ -623,7 +630,8 @@ def save_test_result():
         if not test:
             return jsonify({"message": "Test not found or not assigned"}), 404
 
-        now = datetime.utcnow().isoformat()
+        now = get_ist_time()
+        logging.info(f" LODAAAA Current time: {now}, Test start time: {test['start_time']}, Test end time: {test.get('end_time')}")
         if test['status'] != "active" or now < test['start_time'] or (test.get('end_time') and now > test['end_time']):
             return jsonify({"message": "Test not active or time expired"}), 403
 
