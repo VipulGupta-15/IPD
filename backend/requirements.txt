@@ -1,0 +1,11 @@
+flask
+flask-cors
+flask-jwt-extended
+pymongo
+pyjwt
+groq
+PyMuPDF
+python-dotenv
+bcrypt
+CORS
+pytz
