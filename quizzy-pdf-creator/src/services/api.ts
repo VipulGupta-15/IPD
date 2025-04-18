@@ -52,6 +52,7 @@ const handleApiError = (error: unknown, customMessage: string) => {
 // Helper function to get auth headers
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token")
+  console.log("JWT Token:", token ? "Present" : "Missing") // Debug log
   return {
     "Content-Type": "application/json",
     Authorization: token ? `Bearer ${token}` : "",
@@ -80,6 +81,7 @@ export const register = async (userData: {
     if (data.user) {
       localStorage.setItem("userId", data.user._id)
       localStorage.setItem("userEmail", data.user.email)
+      localStorage.setItem("userRole", data.user.role)
     }
     return data
   } catch (error) {
@@ -99,11 +101,15 @@ export const login = async (userData: { email: string; password: string }) => {
       body: JSON.stringify(userData),
     })
     const data = await response.json() as { token: string; user: User }
-    if (!response.ok) throw new Error(response.statusText || "Login failed")
+    if (!response.ok) {
+      const errorMessage = (await response.json()).message || "Login failed"
+      throw new Error(errorMessage)
+    }
     if (data.token) localStorage.setItem("token", data.token)
     if (data.user) {
       localStorage.setItem("userId", data.user._id)
       localStorage.setItem("userEmail", data.user.email)
+      localStorage.setItem("userRole", data.user.role)
     }
     return data
   } catch (error) {
@@ -119,7 +125,7 @@ export const checkAuth = async () => {
       headers: getAuthHeaders(),
     })
     const data = await response.json() as { authenticated: boolean; user: User }
-    if (!response.ok) throw new Error(response.statusText || "Authentication check failed")
+    if (!response.ok) throw new Error("Authentication check failed")
     return data
   } catch (error) {
     handleApiError(error, "Authentication check failed")
@@ -159,7 +165,7 @@ export const uploadPDF = async (pdfFile: File) => {
       body: formData,
     })
     const data = await response.json() as { success: boolean; pdf_path: string; pdf_name: string }
-    if (!response.ok) throw new Error("PDF upload failed")
+    if (!response.ok || !data.success) throw new Error("PDF upload failed")
     return data
   } catch (error) {
     handleApiError(error, "PDF upload failed")
@@ -171,7 +177,7 @@ export const generateMCQs = async (
   pdfPath: string,
   pdfName: string,
   numQuestions: number,
-  difficulty: string,
+  difficulty: { easy: number; medium: number; hard: number },
   testName: string
 ) => {
   try {
@@ -179,8 +185,17 @@ export const generateMCQs = async (
     formData.append("pdf_path", pdfPath)
     formData.append("pdf_name", pdfName)
     formData.append("num_questions", numQuestions.toString())
-    formData.append("difficulty", difficulty)
+    formData.append("difficulty", JSON.stringify(difficulty))
     formData.append("test_name", testName)
+    
+    console.log("Generate MCQs request:", {
+      pdf_path: pdfPath,
+      pdf_name: pdfName,
+      num_questions: numQuestions,
+      difficulty: JSON.stringify(difficulty),
+      test_name: testName
+    }) // Debug log
+
     const response = await fetch(`${API_URL}/generate-mcqs`, {
       method: "POST",
       headers: {
@@ -188,8 +203,13 @@ export const generateMCQs = async (
       },
       body: formData,
     })
-    const data = await response.json() as { success: boolean; mcqs: MCQ[]; test_name: string; pdf_name: string; warning?: string }
-    if (!response.ok || !data.success) throw new Error("MCQ generation failed")
+
+    const data = await response.json() as { success: boolean; mcqs: MCQ[]; test_name: string; pdf_name: string; warning?: string; error?: string }
+    console.log("Generate MCQs response:", data) // Debug log
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || data.warning || "MCQ generation failed")
+    }
     return data
   } catch (error) {
     handleApiError(error, "MCQ generation failed")
@@ -232,8 +252,8 @@ export const updateMCQs = async (testName: string, mcqs: MCQ[]) => {
 export const assignTest = async (
   testName: string,
   studentIds: string[],
-  startTime: string,  // Already in IST from frontend
-  endTime: string,    // Already in IST from frontend
+  startTime: string,
+  endTime: string,
   duration: number
 ) => {
   try {
@@ -243,19 +263,19 @@ export const assignTest = async (
       body: JSON.stringify({
         test_name: testName,
         student_ids: studentIds,
-        start_time: startTime,  // Pass IST as-is
-        end_time: endTime,      // Pass IST as-is
+        start_time: startTime,
+        end_time: endTime,
         duration,
       }),
-    });
-    const data = await response.json() as { success: boolean; message: string };
-    if (!response.ok) throw new Error(data.message || "Failed to assign test");
-    return data;
+    })
+    const data = await response.json() as { success: boolean; message: string }
+    if (!response.ok) throw new Error(data.message || "Failed to assign test")
+    return data
   } catch (error) {
-    handleApiError(error, "Failed to assign test");
-    throw error;
+    handleApiError(error, "Failed to assign test")
+    throw error
   }
-};
+}
 
 export const manageTest = async (testName: string, action: "start" | "stop" | "reassign", extraParams?: any) => {
   try {
@@ -288,30 +308,36 @@ export const saveTestResult = async (testName: string, result: TestResult) => {
     const payload = {
       test_name: testName,
       result: result,
-    };
-    console.log('Sending to /save-test-result:', JSON.stringify(payload, null, 2)); // Debug log
+    }
+    console.log("Sending to /save-test-result:", JSON.stringify(payload, null, 2)) // Debug log
 
     const response = await fetch(`${API_URL}/save-test-result`, {
       method: "POST",
-      headers: getAuthHeaders(), // Ensure this sets Content-Type: application/json
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
-    });
+    })
 
-    const text = await response.text(); // Get raw response
-    console.log('Raw response from /save-test-result:', text); // Debug log
+    const text = await response.text() // Get raw response
+    console.log("Raw response from /save-test-result:", text) // Debug log
 
-    const data = JSON.parse(text); // Parse JSON
-
-    if (!response.ok) {
-      throw new Error(data.error || data.message || "Failed to save test result");
+    let data
+    try {
+      data = JSON.parse(text) // Parse JSON
+    } catch (parseError) {
+      throw new Error("Invalid JSON response from server")
     }
 
-    return data;
+    if (!response.ok) {
+      throw new Error(data.error || data.message || "Failed to save test result")
+    }
+
+    return data as { message: string }
   } catch (error) {
-    console.error('Error in saveTestResult:', error); // Enhanced error logging
-    throw error; // Re-throw to be caught in TakeTest.tsx
+    console.error("Error in saveTestResult:", error) // Enhanced error logging
+    handleApiError(error, "Failed to save test result")
+    throw error
   }
-};
+}
 
 export const getUserTests = async (filters?: { pdf_name?: string; test_name?: string; page?: number; per_page?: number }) => {
   try {
@@ -385,8 +411,11 @@ export const getStudents = async () => {
       method: "GET",
       headers: getAuthHeaders(),
     })
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to fetch students")
+    }
     const data = await response.json() as User[]
-    if (!response.ok) throw new Error("Failed to fetch students")
     return data
   } catch (error) {
     handleApiError(error, "Failed to fetch students")
@@ -403,7 +432,7 @@ export const updateStudent = async (
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify({
-        student_id: studentId,
+        student_id: studentId, // Fixed typo: studentELA_id → student_id
         ...updates,
       }),
     })

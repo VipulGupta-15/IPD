@@ -172,35 +172,54 @@ def generate_mcq_with_relevance(text, groq_api_key, num_questions=2, difficulty=
         logging.error(f"MCQ generation failed: {str(e)}")
         return {"error": str(e)}
 
-def generate_mcqs_from_random_chunks(text, groq_api_key, num_questions, difficulty, min_relevance=0.7):
-    """Generate MCQs by sampling random chunks."""
+def generate_mcqs_from_random_chunks(text, groq_api_key, difficulty_distribution, min_relevance=0.7):
+    """Generate MCQs by sampling random chunks for each difficulty level."""
     chunks = split_text_into_chunks(text)
     if not chunks:
         return {"error": "No text chunks available"}
     
     all_mcqs = []
-    attempted_chunks = set()
-    chunk_size = 2
+    max_attempts_per_difficulty = 50  # Limit to avoid excessive API calls
 
-    while len(all_mcqs) < num_questions and len(attempted_chunks) < len(chunks):
-        remaining_chunks = [i for i in range(len(chunks)) if i not in attempted_chunks]
-        if not remaining_chunks:
-            break
-        chunk_idx = random.choice(remaining_chunks)
-        attempted_chunks.add(chunk_idx)
-        chunk_text = chunks[chunk_idx]
-
-        mcqs = generate_mcq_with_relevance(chunk_text, groq_api_key, chunk_size, difficulty)
-        if isinstance(mcqs, dict) and 'error' in mcqs:
-            logging.warning(f"Skipping chunk {chunk_idx} due to error: {mcqs['error']}")
+    for difficulty, count in difficulty_distribution.items():
+        if count == 0:
             continue
-        
-        relevant_mcqs = [mcq for mcq in mcqs if mcq["relevance_score"] >= min_relevance]
-        all_mcqs.extend(relevant_mcqs)
-        logging.info(f"Generated {len(relevant_mcqs)} relevant MCQs from chunk {chunk_idx}")
+        collected = 0
+        attempts = 0
+        attempted_chunks = set()
 
+        while collected < count and attempts < max_attempts_per_difficulty and len(attempted_chunks) < len(chunks):
+            remaining_chunks = [i for i in range(len(chunks)) if i not in attempted_chunks]
+            if not remaining_chunks:
+                break
+            chunk_idx = random.choice(remaining_chunks)
+            attempted_chunks.add(chunk_idx)
+            chunk_text = chunks[chunk_idx]
+
+            # Generate up to 2 MCQs per chunk, but only request what's needed
+            chunk_size = min(2, count - collected)
+            mcqs = generate_mcq_with_relevance(chunk_text, groq_api_key, chunk_size, difficulty)
+            if isinstance(mcqs, dict) and 'error' in mcqs:
+                logging.warning(f"Skipping chunk {chunk_idx} for {difficulty} due to error: {mcqs['error']}")
+                attempts += 1
+                continue
+            
+            # Filter relevant MCQs and limit to what's needed
+            relevant_mcqs = [mcq for mcq in mcqs if mcq["relevance_score"] >= min_relevance]
+            # Only take enough MCQs to reach the target count
+            needed = count - collected
+            selected_mcqs = relevant_mcqs[:needed]
+            all_mcqs.extend(selected_mcqs)
+            collected += len(selected_mcqs)
+            attempts += 1
+            logging.info(f"Generated {len(selected_mcqs)} relevant {difficulty} MCQs from chunk {chunk_idx}, total collected: {collected}/{count}")
+
+    # Sort by relevance and trim to exact total requested
+    total_requested = sum(difficulty_distribution.values())
     all_mcqs.sort(key=lambda x: x["relevance_score"], reverse=True)
-    return all_mcqs[:num_questions]
+    all_mcqs = all_mcqs[:total_requested]
+    logging.info(f"Final MCQs generated: {len(all_mcqs)}/{total_requested}")
+    return all_mcqs
 
 # Authentication Endpoints
 @app.route('/api/signup', methods=['POST', 'OPTIONS'])
@@ -346,26 +365,43 @@ def generate_mcqs_endpoint():
     pdf_path = None
     try:
         pdf_path = request.form.get('pdf_path')
-        num_questions = request.form.get('num_questions', default=5, type=int)
-        difficulty = request.form.get('difficulty', default='medium', type=str).lower()
-        test_name = request.form.get('test_name', f"Test_{datetime.now(IST).strftime('%Y%m%d_%H%M%S')}")
         pdf_name = request.form.get('pdf_name')
+        test_name = request.form.get('test_name', f"Test_{datetime.now(IST).strftime('%Y%m%d_%H%M%S')}")
+        difficulty = request.form.get('difficulty', default='{"easy": 0, "medium": 5, "hard": 0}')
+
+        # Parse difficulty as JSON object
+        try:
+            difficulty_distribution = json.loads(difficulty)
+            if not isinstance(difficulty_distribution, dict):
+                raise ValueError("Difficulty must be a JSON object")
+            required_keys = {'easy', 'medium', 'hard'}
+            if not all(k in difficulty_distribution for k in required_keys):
+                raise ValueError("Difficulty must include easy, medium, and hard")
+            if not all(isinstance(v, int) and v >= 0 for v in difficulty_distribution.values()):
+                raise ValueError("Difficulty values must be non-negative integers")
+        except json.JSONDecodeError:
+            return jsonify({'error': 'Invalid difficulty format: must be a JSON object'}), 400
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+
+        # Calculate num_questions as sum of difficulties
+        num_questions = sum(difficulty_distribution.values())
+        if num_questions < 1 or num_questions > 20:
+            return jsonify({'error': 'Total number of questions must be 1-20'}), 400
+
+        logging.info(f"Request data: pdf_path={pdf_path}, pdf_name={pdf_name}, num_questions={num_questions}, difficulty={difficulty_distribution}, test_name={test_name}")
 
         if not pdf_path or not os.path.exists(pdf_path):
             return jsonify({'error': 'PDF path invalid or missing'}), 400
         if not pdf_name:
             return jsonify({'error': 'PDF name missing'}), 400
-        if num_questions < 1 or num_questions > 20:
-            return jsonify({'error': 'Number of questions must be 1-20'}), 400
-        if difficulty not in ['easy', 'medium', 'hard']:
-            return jsonify({'error': 'Difficulty must be easy, medium, or hard'}), 400
 
         groq_api_key = os.getenv("GROQ_API_KEY")
         if not groq_api_key:
             raise ValueError("GROQ_API_KEY not set")
 
         extracted_text = extract_text_from_pdf(pdf_path)
-        mcqs = generate_mcqs_from_random_chunks(extracted_text, groq_api_key, num_questions, difficulty)
+        mcqs = generate_mcqs_from_random_chunks(extracted_text, groq_api_key, difficulty_distribution)
 
         if isinstance(mcqs, dict) and 'error' in mcqs:
             logging.error(f"MCQ generation error: {mcqs['error']}")

@@ -107,9 +107,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) =>
                 </div>
 
                 <nav className="space-y-1">
-                  {navItems.map((item) => (
+                  {navItems.map((item, index) => (
                     <Link
-                      key={item.path}
+                      key={`${item.path}-${index}`}
                       to={item.path}
                       className="nav-item"
                       onClick={() => setIsMobileSidebarOpen(false)}
@@ -158,11 +158,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) =>
                 </div>
 
                 <nav className="space-y-1">
-                  {navItems.map((item) => {
+                  {navItems.map((item, index) => {
                     const isActive = window.location.pathname === item.path;
                     return (
                       <Link
-                        key={item.path}
+                        key={`${item.path}-${index}`}
                         to={item.path}
                         className={`nav-item ${isActive ? 'active' : ''}`}
                       >

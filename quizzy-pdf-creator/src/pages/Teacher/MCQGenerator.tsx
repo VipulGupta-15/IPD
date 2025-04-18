@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileUp, List, AlertCircle, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { FileUp, List, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 import DashboardLayout from '@/components/DashboardLayout';
 import FuturisticCard from '@/components/FuturisticCard';
 import FuturisticButton from '@/components/FuturisticButton';
@@ -17,7 +19,14 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
 const generateSchema = z.object({
   testName: z.string().min(3, 'Test name must be at least 3 characters'),
   numQuestions: z.coerce.number().min(1).max(20),
-  difficulty: z.enum(['easy', 'medium', 'hard']),
+  difficulty: z.object({
+    easy: z.number().min(0).max(20),
+    medium: z.number().min(0).max(20),
+    hard: z.number().min(0).max(20),
+  }).refine(
+    (data) => data.easy + data.medium + data.hard > 0,
+    { message: 'At least one question must be selected' }
+  ),
 });
 
 type GenerateFormValues = z.infer<typeof generateSchema>;
@@ -32,7 +41,7 @@ const TeacherMCQGenerator: React.FC = () => {
   const [lastFormValues, setLastFormValues] = useState<GenerateFormValues>({
     testName: '',
     numQuestions: 5,
-    difficulty: 'medium',
+    difficulty: { easy: 2, medium: 2, hard: 1 },
   });
 
   const {
@@ -40,15 +49,23 @@ const TeacherMCQGenerator: React.FC = () => {
     handleSubmit,
     formState: { errors },
     reset,
-    getValues,
+    setValue,
+    watch,
   } = useForm<GenerateFormValues>({
     resolver: zodResolver(generateSchema),
     defaultValues: {
       testName: '',
       numQuestions: 5,
-      difficulty: 'medium',
+      difficulty: { easy: 2, medium: 2, hard: 1 },
     },
   });
+
+  const difficulty = watch('difficulty');
+
+  useEffect(() => {
+    const total = difficulty.easy + difficulty.medium + difficulty.hard;
+    setValue('numQuestions', total);
+  }, [difficulty, setValue]);
 
   const handleFileSelect = (file: File) => {
     setPdfFile(file);
@@ -81,7 +98,7 @@ const TeacherMCQGenerator: React.FC = () => {
       toast.success('PDF uploaded successfully');
     } catch (error) {
       console.error('Error uploading PDF:', error);
-      toast.error('Failed to upload PDF');
+      toast.error(error instanceof Error ? error.message : 'Failed to upload PDF');
     } finally {
       setIsUploading(false);
     }
@@ -102,7 +119,7 @@ const TeacherMCQGenerator: React.FC = () => {
         data.difficulty,
         data.testName
       );
-      
+
       setGeneratedMCQs(response.mcqs);
       setLastFormValues(data);
       setStep('results');
@@ -112,8 +129,9 @@ const TeacherMCQGenerator: React.FC = () => {
       }
     } catch (error) {
       console.error('Error generating MCQs:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate MCQs');
-      if (error.message.includes('PDF path invalid')) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate MCQs';
+      toast.error(errorMessage);
+      if (errorMessage.includes('PDF path invalid')) {
         toast.error('PDF file is no longer available. Please upload it again.');
         setStep('upload');
         setPdfFile(null);
@@ -133,7 +151,7 @@ const TeacherMCQGenerator: React.FC = () => {
     if (!lastFormValues.testName) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/delete-test`, {
+      const response = await fetch(`${API_URL}/delete-test`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -142,8 +160,9 @@ const TeacherMCQGenerator: React.FC = () => {
         body: JSON.stringify({ test_name: lastFormValues.testName }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        throw new Error('Failed to delete test');
+        throw new Error(data.error || 'Failed to delete test');
       }
 
       toast.success('Test deleted successfully');
@@ -151,10 +170,10 @@ const TeacherMCQGenerator: React.FC = () => {
       setPdfFile(null);
       setPdfPath('');
       setGeneratedMCQs([]);
-      reset({ testName: '', numQuestions: 5, difficulty: 'medium' });
+      reset({ testName: '', numQuestions: 5, difficulty: { easy: 2, medium: 2, hard: 1 } });
     } catch (error) {
       console.error('Error deleting test:', error);
-      toast.error('Failed to delete test');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete test');
     }
   };
 
@@ -211,33 +230,69 @@ const TeacherMCQGenerator: React.FC = () => {
                   {...register('testName')}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FuturisticInput
-                    label="Number of Questions"
-                    type="number"
-                    placeholder="Enter number of questions"
-                    min={1}
-                    max={20}
-                    error={errors.numQuestions?.message}
-                    {...register('numQuestions')}
-                  />
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-softWhite/80 mb-1">
-                      Difficulty Level
-                    </label>
-                    <select
-                      className="futuristic-input w-full"
-                      {...register('difficulty')}
-                    >
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                    </select>
-                    {errors.difficulty?.message && (
-                      <p className="text-neonPink text-sm mt-1">{errors.difficulty.message}</p>
-                    )}
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium text-softWhite/80 mb-1">
+                    Difficulty Distribution (Total: {difficulty.easy + difficulty.medium + difficulty.hard})
+                  </label>
+                  <div className="space-y-6 px-4">
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-softWhite">Easy</span>
+                        <span className="text-softWhite">{difficulty.easy}</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={20}
+                        value={difficulty.easy}
+                        onChange={(value) => {
+                          setValue('difficulty.easy', value as number);
+                          setValue('difficulty', { ...difficulty, easy: value as number });
+                        }}
+                        trackStyle={{ backgroundColor: '#00e6ff' }}
+                        handleStyle={{ borderColor: '#00e6ff', backgroundColor: '#003366' }}
+                        railStyle={{ backgroundColor: '#1a2a44' }}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-softWhite">Medium</span>
+                        <span className="text-softWhite">{difficulty.medium}</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={20}
+                        value={difficulty.medium}
+                        onChange={(value) => {
+                          setValue('difficulty.medium', value as number);
+                          setValue('difficulty', { ...difficulty, medium: value as number });
+                        }}
+                        trackStyle={{ backgroundColor: '#00e6ff' }}
+                        handleStyle={{ borderColor: '#00e6ff', backgroundColor: '#003366' }}
+                        railStyle={{ backgroundColor: '#1a2a44' }}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-softWhite">Hard</span>
+                        <span className="text-softWhite">{difficulty.hard}</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={20}
+                        value={difficulty.hard}
+                        onChange={(value) => {
+                          setValue('difficulty.hard', value as number);
+                          setValue('difficulty', { ...difficulty, hard: value as number });
+                        }}
+                        trackStyle={{ backgroundColor: '#00e6ff' }}
+                        handleStyle={{ borderColor: '#00e6ff', backgroundColor: '#003366' }}
+                        railStyle={{ backgroundColor: '#1a2a44' }}
+                      />
+                    </div>
                   </div>
+                  {errors.difficulty?.message && (
+                    <p className="text-neonPink text-sm mt-2">{errors.difficulty.message}</p>
+                  )}
                 </div>
 
                 <div className="p-3 rounded-lg bg-deepBlue border border-neonCyan/10">
@@ -247,7 +302,7 @@ const TeacherMCQGenerator: React.FC = () => {
                       <p className="text-softWhite mb-1">Important Notes</p>
                       <ul className="text-sm text-softWhite/70 space-y-1 list-disc pl-5">
                         <li>Generation may take 30-60 seconds depending on PDF size</li>
-                        <li>Questions are filtered for relevance (score `{'<'}` 0.7)</li>
+                        <li>Questions are filtered for relevance (score ≥ 0.7)</li>
                         <li>Maximum of 20 questions can be generated at once</li>
                         <li>Regenerating with the same test name will replace existing MCQs</li>
                       </ul>
@@ -264,7 +319,7 @@ const TeacherMCQGenerator: React.FC = () => {
                       setPdfFile(null);
                       setPdfPath('');
                       setGeneratedMCQs([]);
-                      reset({ testName: '', numQuestions: 5, difficulty: 'medium' });
+                      reset({ testName: '', numQuestions: 5, difficulty: { easy: 2, medium: 2, hard: 1 } });
                     }}
                   >
                     New PDF
@@ -273,6 +328,7 @@ const TeacherMCQGenerator: React.FC = () => {
                     type="submit"
                     isLoading={isGenerating}
                     icon={<List size={18} />}
+                    disabled={difficulty.easy + difficulty.medium + difficulty.hard === 0}
                   >
                     Generate MCQs
                   </FuturisticButton>
@@ -314,8 +370,8 @@ const TeacherMCQGenerator: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-xs text-softWhite/50">Difficulty</p>
-                    <p className="text-sm text-softWhite capitalize">
-                      {generatedMCQs.length > 0 ? generatedMCQs[0].difficulty : 'N/A'}
+                    <p className="text-sm text-softWhite">
+                      {lastFormValues.difficulty.easy}E/{lastFormValues.difficulty.medium}M/{lastFormValues.difficulty.hard}H
                     </p>
                   </div>
                 </div>
@@ -332,6 +388,9 @@ const TeacherMCQGenerator: React.FC = () => {
                       <div className="flex items-center">
                         <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5 mr-2">
                           {mcq.type}
+                        </span>
+                        <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5 mr-2">
+                          {mcq.difficulty}
                         </span>
                         <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5">
                           Relevance: {(mcq.relevance_score * 100).toFixed(0)}%
@@ -388,7 +447,7 @@ const TeacherMCQGenerator: React.FC = () => {
                       setPdfFile(null);
                       setPdfPath('');
                       setGeneratedMCQs([]);
-                      reset({ testName: '', numQuestions: 5, difficulty: 'medium' });
+                      reset({ testName: '', numQuestions: 5, difficulty: { easy: 2, medium: 2, hard: 1 } });
                     }}
                   >
                     Upload New PDF
