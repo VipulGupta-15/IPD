@@ -256,7 +256,7 @@ def signup():
             "email": email,
             "password": hashed_password,
             "role": role,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(IST).isoformat()
         }
         
         result = users_collection.insert_one(user)
@@ -427,10 +427,10 @@ def generate_mcqs_endpoint():
             "test_name": test_name,
             "pdf_name": pdf_name,
             "mcqs": mcqs,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(IST).isoformat(),
             "status": "active" if is_student else "generated",
             "assigned_to": [user_id] if is_student else [],
-            "start_time": datetime.utcnow().isoformat() if is_student else None,
+            "start_time": datetime.now(IST).isoformat() if is_student else None,
             "end_time": None,
             "duration": duration,
             "result": {}
@@ -441,7 +441,7 @@ def generate_mcqs_endpoint():
                 {"_id": existing_test["_id"]},
                 {"$set": {
                     "mcqs": mcqs,
-                    "created_at": datetime.utcnow().isoformat(),
+                    "created_at": datetime.now(IST).isoformat(),
                 }}
             )
             logging.info(f"Updated existing test {test_name} with {len(mcqs)} MCQs")
@@ -731,7 +731,7 @@ def save_test_result():
         if not test:
             return jsonify({"message": "Test not found or not assigned"}), 404
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(IST).isoformat()
         if test['status'] != "active" or now < test['start_time'] or (test.get('end_time') and now > test['end_time']):
             return jsonify({"message": "Test not active or time expired"}), 403
 
