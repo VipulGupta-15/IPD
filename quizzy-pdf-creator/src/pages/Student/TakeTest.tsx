@@ -14,7 +14,7 @@ interface QuestionState {
 }
 
 const IST_TIMEZONE = 'Asia/Kolkata';
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "https://ipd-rt15.onrender.com/api";
 
 const TakeTest: React.FC = () => {
   const { testName } = useParams<{ testName: string }>();

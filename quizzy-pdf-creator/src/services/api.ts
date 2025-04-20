@@ -1,7 +1,7 @@
 import { toast } from "sonner"
 
 // Set the API URL based on environment
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "http://localhost:3000/api"
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "http://localhost:3000/api" || "https://ipd-rt15.onrender.com/api";
 
 // Define interfaces for API responses
 export interface User {
