@@ -29,7 +29,7 @@ logging.basicConfig(
 app = Flask(__name__)
 CORS(app, 
      resources={r"/*": {
-         "origins": ["http://localhost:8080", "http://localhost:4040", "http://localhost:3000","https://frontend-y2l8.onrender.com"],
+         "origins": ["http://localhost:8080", "http://localhost:4040", "http://localhost:3000","https://frontend-g1sh.onrender.com"],
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "expose_headers": ["Content-Type", "Authorization"],
@@ -41,7 +41,7 @@ CORS(app,
 @app.after_request
 def after_request(response):
     origin = request.headers.get('Origin')
-    if origin in ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000","https://ipd-rt15.onrender.com"]:
+    if origin in ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000","https://frontend-g1sh.onrender.com"]:
         response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
