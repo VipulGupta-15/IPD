@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatInTimeZone } from 'date-fns-tz';
 
 const IST_TIMEZONE = 'Asia/Kolkata';
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "https://ipd-rt15.onrender.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "https://backend-yy2h.onrender.com/api";
 
 const ManageTests: React.FC = () => {
   const [tests, setTests] = useState<Test[]>([]);
