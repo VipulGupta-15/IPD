@@ -2,16 +2,31 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Clock, FileText, AlertCircle } from 'lucide-react';
+import { formatInTimeZone } from 'date-fns-tz';
 import DashboardLayout from '@/components/DashboardLayout';
 import FuturisticCard from '@/components/FuturisticCard';
 import FuturisticButton from '@/components/FuturisticButton';
 import { getUserTests, Test } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
+const IST_TIMEZONE = 'Asia/Kolkata';
+
 const StudentTests: React.FC = () => {
   const [tests, setTests] = useState<Test[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  // Helper function to format date
+  const formatDateTime = (dateString: string | undefined): string => {
+    if (!dateString) return 'Not specified';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      return formatInTimeZone(date, IST_TIMEZONE, 'yyyy-MM-dd HH:mm:ss');
+    } catch {
+      return 'Invalid date';
+    }
+  };
 
   useEffect(() => {
     const fetchTests = async () => {
@@ -20,7 +35,7 @@ const StudentTests: React.FC = () => {
         const testsData = await getUserTests();
         // Filter tests that are assigned to this student
         const assignedTests = testsData.filter(
-          test => test.assigned_to.includes(localStorage.getItem('userId') || '')
+          (test) => test.assigned_to.includes(localStorage.getItem('userId') || '')
         );
         setTests(assignedTests);
       } catch (error) {
@@ -39,16 +54,16 @@ const StudentTests: React.FC = () => {
   }, [toast]);
 
   // Group tests by status
-  const pendingTests = tests.filter(test => 
-    test.status === 'assigned' && !test.result[localStorage.getItem('userId') || '']
+  const pendingTests = tests.filter(
+    (test) => test.status === 'assigned' && !test.result[localStorage.getItem('userId') || '']
   );
-  
-  const activeTests = tests.filter(test => 
-    test.status === 'active' && !test.result[localStorage.getItem('userId') || '']
+
+  const activeTests = tests.filter(
+    (test) => test.status === 'active' && !test.result[localStorage.getItem('userId') || '']
   );
-  
-  const completedTests = tests.filter(test => 
-    test.result[localStorage.getItem('userId') || '']
+
+  const completedTests = tests.filter(
+    (test) => test.result[localStorage.getItem('userId') || '']
   );
 
   return (
@@ -65,9 +80,7 @@ const StudentTests: React.FC = () => {
               <h3 className="text-xl font-semibold text-softWhite mb-2">No Tests Found</h3>
               <p className="text-softWhite/60 mb-6">You don't have any tests assigned to you yet.</p>
               <Link to="/student/generate-mcqs">
-                <FuturisticButton>
-                  Generate Your Own MCQs
-                </FuturisticButton>
+                <FuturisticButton>Generate Your Own MCQs</FuturisticButton>
               </Link>
             </div>
           </FuturisticCard>
@@ -93,6 +106,12 @@ const StudentTests: React.FC = () => {
                       <p className="text-softWhite/70 mb-2">
                         <span className="font-medium">Source:</span> {test.pdf_name}
                       </p>
+                      <div className="text-softWhite/70 mb-2">
+                        <span className="font-medium">Starts:</span> {formatDateTime(test.start_time)}
+                      </div>
+                      <div className="text-softWhite/70 mb-2">
+                        <span className="font-medium">Ends:</span> {formatDateTime(test.end_time)}
+                      </div>
                       <div className="flex items-center text-softWhite/70 mb-4">
                         <Clock size={16} className="mr-1" />
                         <span className="text-sm">
@@ -100,9 +119,7 @@ const StudentTests: React.FC = () => {
                         </span>
                       </div>
                       <Link to={`/student/take-test/${test.test_name}`}>
-                        <FuturisticButton className="w-full">
-                          Take Test Now
-                        </FuturisticButton>
+                        <FuturisticButton className="w-full">Take Test Now</FuturisticButton>
                       </Link>
                     </FuturisticCard>
                   ))}
@@ -130,6 +147,12 @@ const StudentTests: React.FC = () => {
                       <p className="text-softWhite/70 mb-2">
                         <span className="font-medium">Source:</span> {test.pdf_name}
                       </p>
+                      <div className="text-softWhite/70 mb-2">
+                        <span className="font-medium">Starts:</span> {formatDateTime(test.start_time)}
+                      </div>
+                      <div className="text-softWhite/70 mb-2">
+                        <span className="font-medium">Ends:</span> {formatDateTime(test.end_time)}
+                      </div>
                       <div className="flex items-center text-softWhite/70 mb-2">
                         <Clock size={16} className="mr-1" />
                         <span className="text-sm">
@@ -160,7 +183,7 @@ const StudentTests: React.FC = () => {
                   {completedTests.map((test, index) => {
                     const result = test.result[localStorage.getItem('userId') || ''];
                     const score = result ? Math.round((result.score / result.totalQuestions) * 100) : 0;
-                    
+
                     return (
                       <FuturisticCard key={index} className="border-l-4 border-softWhite/30">
                         <div className="flex justify-between items-start mb-4">
@@ -177,10 +200,11 @@ const StudentTests: React.FC = () => {
                             <FileText size={16} className="inline mr-1" />
                             {test.mcqs.length} questions
                           </div>
-                          <div className={`text-sm font-medium ${
-                            score >= 70 ? 'text-neonCyan' : 
-                            score >= 40 ? 'text-violet' : 'text-neonPink'
-                          }`}>
+                          <div
+                            className={`text-sm font-medium ${
+                              score >= 70 ? 'text-neonCyan' : score >= 40 ? 'text-violet' : 'text-neonPink'
+                            }`}
+                          >
                             Score: {score}%
                           </div>
                         </div>

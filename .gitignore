@@ -1,4 +1,5 @@
 /T5-Transformers-MCQ-Generation
 /backend/.env
 /backend/.venv
-
+/backend/venv/
+/.env
