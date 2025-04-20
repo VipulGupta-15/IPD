@@ -29,7 +29,7 @@ logging.basicConfig(
 app = Flask(__name__)
 CORS(app, 
      resources={r"/*": {
-         "origins": ["http://localhost:8080", "http://localhost:4040", "http://localhost:3000","https://8053-58-146-106-120.ngrok-free.app","https://ipd-rt15.onrender.com"],
+         "origins": ["http://localhost:8080", "http://localhost:4040", "http://localhost:3000","https://frontend-y2l8.onrender.com"],
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization"],
          "expose_headers": ["Content-Type", "Authorization"],
