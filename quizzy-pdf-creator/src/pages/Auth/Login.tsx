@@ -42,7 +42,8 @@ const Login: React.FC = () => {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setIsLoading(true);
-      console.log("Submitting login with data:", data);
+      // Sanitized log: Exclude password
+      console.log('Submitting login with data:', { email: data.email, role: data.role });
       await login(data.email, data.password, data.role);
       
       // Navigate based on role

@@ -95,6 +95,8 @@ export const register = async (
 
 export const login = async (userData: { email: string; password: string }) => {
   try {
+    // Safe debug log
+    console.log('Login request:', { email: userData.email });
     const response = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: {
@@ -102,24 +104,24 @@ export const login = async (userData: { email: string; password: string }) => {
         "Accept": "application/json",
       },
       body: JSON.stringify(userData),
-    })
-    const data = await response.json() as { token: string; user: User }
+    });
+    const data = await response.json() as { token: string; user: User };
     if (!response.ok) {
-      const errorMessage = (await response.json()).message || "Login failed"
-      throw new Error(errorMessage)
+      const errorMessage = (await response.json()).message || "Login failed";
+      throw new Error(errorMessage);
     }
-    if (data.token) localStorage.setItem("token", data.token)
+    if (data.token) localStorage.setItem("token", data.token);
     if (data.user) {
-      localStorage.setItem("userId", data.user._id)
-      localStorage.setItem("userEmail", data.user.email)
-      localStorage.setItem("userRole", data.user.role)
+      localStorage.setItem("userId", data.user._id);
+      localStorage.setItem("userEmail", data.user.email);
+      localStorage.setItem("userRole", data.user.role);
     }
-    return data
+    return data;
   } catch (error) {
-    handleApiError(error, "Login failed")
-    throw error
+    handleApiError(error, "Login failed");
+    throw error;
   }
-}
+};
 
 export const checkAuth = async () => {
   try {
