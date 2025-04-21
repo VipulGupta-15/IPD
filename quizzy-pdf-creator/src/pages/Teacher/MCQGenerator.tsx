@@ -14,7 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { uploadPDF, generateMCQs, MCQ } from '@/services/api';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_API_URL ||"https://backend-yy2h.onrender.com/api" ||"http://localhost:5001/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "https://backend-crc4.onrender.com/api";
 
 const generateSchema = z.object({
   testName: z.string().min(3, 'Test name must be at least 3 characters'),
@@ -65,6 +65,9 @@ const TeacherMCQGenerator: React.FC = () => {
   useEffect(() => {
     const total = difficulty.easy + difficulty.medium + difficulty.hard;
     setValue('numQuestions', total);
+    if (total > 20) {
+      toast.error('You can generate a maximum of 20 questions only');
+    }
   }, [difficulty, setValue]);
 
   const handleFileSelect = (file: File) => {
@@ -107,6 +110,12 @@ const TeacherMCQGenerator: React.FC = () => {
   const onSubmit = async (data: GenerateFormValues) => {
     if (!pdfPath || !pdfFile) {
       toast.error('Please upload a PDF file first');
+      return;
+    }
+
+    const totalQuestions = data.difficulty.easy + data.difficulty.medium + data.difficulty.hard;
+    if (totalQuestions > 20) {
+      toast.error('You can generate a maximum of 20 questions only');
       return;
     }
 
@@ -328,7 +337,11 @@ const TeacherMCQGenerator: React.FC = () => {
                     type="submit"
                     isLoading={isGenerating}
                     icon={<List size={18} />}
-                    disabled={difficulty.easy + difficulty.medium + difficulty.hard === 0}
+                    disabled={
+                      isGenerating ||
+                      difficulty.easy + difficulty.medium + difficulty.hard === 0 ||
+                      difficulty.easy + difficulty.medium + difficulty.hard > 20
+                    }
                   >
                     Generate MCQs
                   </FuturisticButton>

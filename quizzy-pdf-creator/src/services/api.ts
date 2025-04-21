@@ -1,7 +1,7 @@
 import { toast } from "sonner"
 
 // Set the API URL based on environment
-const API_URL = import.meta.env.VITE_API_URL || "https://backend-yy2h.onrender.com/api"||"http://localhost:5001/api" || "http://localhost:3000/api" ;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "http://localhost:3000/api" || "https://backend-crc4.onrender.com/api";
 
 // Define interfaces for API responses
 export interface User {
@@ -60,12 +60,15 @@ const getAuthHeaders = () => {
 }
 
 // Auth functions
-export const register = async (userData: {
-  name: string
-  email: string
-  password: string
-  role: "teacher" | "student"
-}) => {
+export const register = async (
+  userData: {
+    name: string
+    email: string
+    password: string
+    role: "teacher" | "student"
+  },
+  storeCredentials: boolean = true
+) => {
   try {
     const response = await fetch(`${API_URL}/signup`, {
       method: "POST",
@@ -77,8 +80,8 @@ export const register = async (userData: {
     })
     const data = await response.json() as { token: string; user: User; message: string }
     if (!response.ok) throw new Error(data.message || "Registration failed")
-    if (data.token) localStorage.setItem("token", data.token)
-    if (data.user) {
+    if (storeCredentials && data.token) localStorage.setItem("token", data.token)
+    if (storeCredentials && data.user) {
       localStorage.setItem("userId", data.user._id)
       localStorage.setItem("userEmail", data.user.email)
       localStorage.setItem("userRole", data.user.role)
@@ -148,6 +151,77 @@ export const updateProfile = async (updates: { name?: string; email?: string; pa
     return data
   } catch (error) {
     handleApiError(error, "Failed to update profile")
+    throw error
+  }
+}
+
+// Student Management
+export const addStudent = async (studentData: {
+  name: string
+  email: string
+  password: string
+  role: "student"
+}) => {
+  try {
+    const data = await register(studentData, false) // Don't store credentials
+    return data.user // Return only the User object
+  } catch (error) {
+    handleApiError(error, "Failed to create student account")
+    throw error
+  }
+}
+
+export const getStudents = async () => {
+  try {
+    const response = await fetch(`${API_URL}/students`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    })
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to fetch students")
+    }
+    const data = await response.json() as User[]
+    return data
+  } catch (error) {
+    handleApiError(error, "Failed to fetch students")
+    throw error
+  }
+}
+
+export const updateStudent = async (
+  studentId: string,
+  updates: { name?: string; email?: string; password?: string }
+) => {
+  try {
+    const response = await fetch(`${API_URL}/students/update`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        student_id: studentId, // Send student_id in the request body
+        ...updates,
+      }),
+    })
+    const data = await response.json() as { message: string }
+    if (!response.ok) throw new Error(data.message || "Failed to update student")
+    return data
+  } catch (error) {
+    handleApiError(error, "Failed to update student")
+    throw error
+  }
+}
+
+export const deleteStudent = async (studentId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/students/delete?student_id=${encodeURIComponent(studentId)}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    })
+    const data = await response.json() as { message: string }
+    if (!response.ok) throw new Error(data.message || "Failed to delete student")
+    return data
+  } catch (error) {
+    handleApiError(error, "Failed to delete student")
     throw error
   }
 }
@@ -400,62 +474,6 @@ export const exportResults = async (testName: string) => {
     return { success: true }
   } catch (error) {
     handleApiError(error, "Failed to export results")
-    throw error
-  }
-}
-
-// Student Management
-export const getStudents = async () => {
-  try {
-    const response = await fetch(`${API_URL}/students`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    })
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || "Failed to fetch students")
-    }
-    const data = await response.json() as User[]
-    return data
-  } catch (error) {
-    handleApiError(error, "Failed to fetch students")
-    throw error
-  }
-}
-
-export const updateStudent = async (
-  studentId: string,
-  updates: { name?: string; email?: string; password?: string }
-) => {
-  try {
-    const response = await fetch(`${API_URL}/students/update`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        student_id: studentId, // Fixed typo: studentELA_id → student_id
-        ...updates,
-      }),
-    })
-    const data = await response.json() as { message: string }
-    if (!response.ok) throw new Error(data.message || "Failed to update student")
-    return data
-  } catch (error) {
-    handleApiError(error, "Failed to update student")
-    throw error
-  }
-}
-
-export const deleteStudent = async (studentId: string) => {
-  try {
-    const response = await fetch(`${API_URL}/students/delete?student_id=${encodeURIComponent(studentId)}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    })
-    const data = await response.json() as { message: string }
-    if (!response.ok) throw new Error(data.message || "Failed to delete student")
-    return data
-  } catch (error) {
-    handleApiError(error, "Failed to delete student")
     throw error
   }
 }
