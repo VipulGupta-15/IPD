@@ -122,8 +122,8 @@ def extract_json_from_response(raw_output):
         raise ValueError("No JSON array delimiters found")
     return json.loads(raw_output[start_idx:end_idx])
 
-def generate_mcq_with_relevance(text, groq_api_key, num_questions=2, difficulty="medium"):
-    """Generate MCQs from text using Groq API."""
+def generate_mcq_with_relevance(text, groq_api_key, num_questions=2, difficulty="medium", excluded_questions=None):
+    """Generate MCQs from text using Groq API, avoiding specified questions."""
     try:
         client = Groq(api_key=groq_api_key)
         difficulty_instructions = {
@@ -132,6 +132,10 @@ def generate_mcq_with_relevance(text, groq_api_key, num_questions=2, difficulty=
             "hard": "For hard difficulty, generate complex questions that demand deep understanding, synthesis of multiple concepts, or complex problem-solving. Use very plausible distractors that require careful consideration."
         }
         instruction = difficulty_instructions.get(difficulty, "")
+        # Build exclusion instruction if provided
+        exclusion_prompt = ""
+        if excluded_questions:
+            exclusion_prompt = f"Do not generate questions identical or very similar to the following: {json.dumps(excluded_questions)}.\n"
         prompt = (
             f"Generate {num_questions} multiple-choice questions from the text below. "
             f"{instruction} "
@@ -141,6 +145,7 @@ def generate_mcq_with_relevance(text, groq_api_key, num_questions=2, difficulty=
             f"Each question should be a JSON object with: question (string), options (array of 4 strings), "
             f"correct_answer (string), type (theory/numerical), difficulty (string), "
             f"relevance_score (float between 0 and 1, where 1 is highly relevant). "
+            f"{exclusion_prompt}"
             f"Return a JSON array only.\n\nText:\n{text}"
         )
         completion = client.chat.completions.create(
@@ -583,7 +588,15 @@ def regenerate_mcq():
         return jsonify({'error': 'GROQ_API_KEY not set'}), 500
 
     extracted_text = extract_text_from_pdf(f"temp_{user_id}_{test['pdf_name']}")
-    new_mcq = generate_mcq_with_relevance(extracted_text, groq_api_key, num_questions=1, difficulty=test['mcqs'][mcq_index]['difficulty'])
+    # Pass the current MCQ's question as excluded
+    current_mcq = test['mcqs'][mcq_index]
+    new_mcq = generate_mcq_with_relevance(
+        extracted_text, 
+        groq_api_key, 
+        num_questions=1, 
+        difficulty=current_mcq['difficulty'],
+        excluded_questions=[current_mcq['question']]
+    )
     if isinstance(new_mcq, dict) and 'error' in new_mcq:
         return jsonify({'error': new_mcq['error']}), 500
 

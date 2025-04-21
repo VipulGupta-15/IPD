@@ -457,7 +457,7 @@ const TeacherStudents: React.FC = () => {
                     </div>
                     
                     <div className="flex gap-2">
-                      <FuturisticButton 
+                      {/* <FuturisticButton 
                         size="sm" 
                         variant="outline"
                         onClick={() => {
@@ -471,7 +471,7 @@ const TeacherStudents: React.FC = () => {
                       >
                         <MailOpen size={16} className="mr-1" />
                         Send Reset Email
-                      </FuturisticButton>
+                      </FuturisticButton> */}
                       
                       <FuturisticButton 
                         size="sm" 

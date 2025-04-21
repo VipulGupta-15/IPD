@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileUp, List, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { FileUp, List, AlertCircle, CheckCircle, Trash2, RefreshCw } from 'lucide-react';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -11,7 +11,7 @@ import FileUpload from '@/components/FileUpload';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { uploadPDF, generateMCQs, MCQ } from '@/services/api';
+import { uploadPDF, generateMCQs, regenerateMCQ, MCQ } from '@/services/api';
 import { toast } from 'sonner';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "https://backend-crc4.onrender.com/api";
@@ -43,6 +43,7 @@ const TeacherMCQGenerator: React.FC = () => {
     numQuestions: 5,
     difficulty: { easy: 2, medium: 2, hard: 1 },
   });
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
 
   const {
     register,
@@ -154,6 +155,37 @@ const TeacherMCQGenerator: React.FC = () => {
   const handleRegenerate = () => {
     setStep('generate');
     reset(lastFormValues);
+  };
+
+  const handleRegenerateMCQ = async (index: number) => {
+    if (!lastFormValues.testName) {
+      toast.error('Test name is missing');
+      return;
+    }
+
+    try {
+      setRegeneratingIndex(index);
+      const newMCQ = await regenerateMCQ(lastFormValues.testName, index);
+      setGeneratedMCQs(prev => {
+        const updated = [...prev];
+        updated[index] = newMCQ;
+        return updated;
+      });
+      toast.success('Question regenerated successfully');
+    } catch (error) {
+      console.error('Error regenerating MCQ:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to regenerate MCQ';
+      toast.error(errorMessage);
+      if (errorMessage.includes('Test or MCQ not found') || errorMessage.includes('PDF')) {
+        toast.error('Test or PDF is no longer available. Please upload again.');
+        setStep('upload');
+        setPdfFile(null);
+        setPdfPath('');
+        setGeneratedMCQs([]);
+      }
+    } finally {
+      setRegeneratingIndex(null);
+    }
   };
 
   const handleDeleteTest = async () => {
@@ -392,22 +424,35 @@ const TeacherMCQGenerator: React.FC = () => {
 
               <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2">
                 {generatedMCQs.map((mcq, qIndex) => (
-                  <div
+                  <motion.div
                     key={qIndex}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
                     className="p-4 rounded-lg bg-deepBlue/50 border border-neonCyan/10"
                   >
-                    <div className="flex justify-between mb-3">
+                    <div className="flex justify-between mb-3 items-center">
                       <span className="text-neonCyan font-medium">Question {qIndex + 1}</span>
-                      <div className="flex items-center">
-                        <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5 mr-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5">
                           {mcq.type}
                         </span>
-                        <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5 mr-2">
+                        <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5">
                           {mcq.difficulty}
                         </span>
                         <span className="text-xs bg-neonCyan/10 text-neonCyan rounded-full px-2 py-0.5">
                           Relevance: {(mcq.relevance_score * 100).toFixed(0)}%
                         </span>
+                        <FuturisticButton
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRegenerateMCQ(qIndex)}
+                          isLoading={regeneratingIndex === qIndex}
+                          disabled={regeneratingIndex !== null}
+                          icon={<RefreshCw size={16} />}
+                        >
+                          Regenerate
+                        </FuturisticButton>
                       </div>
                     </div>
                     <p className="text-softWhite mb-4">{mcq.question}</p>
@@ -433,7 +478,7 @@ const TeacherMCQGenerator: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 

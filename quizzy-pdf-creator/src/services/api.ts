@@ -477,3 +477,25 @@ export const exportResults = async (testName: string) => {
     throw error
   }
 }
+
+// Regenerate a single MCQ
+export const regenerateMCQ = async (testName: string, mcqIndex: number): Promise<MCQ> => {
+  try {
+    const response = await fetch(`${API_URL}/regenerate-mcq`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ test_name: testName, mcq_index: mcqIndex }),
+    });
+
+    const data = await response.json() as { message: string; new_mcq: MCQ };
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to regenerate MCQ");
+    }
+
+    return data.new_mcq;
+  } catch (error) {
+    handleApiError(error, "Failed to regenerate MCQ");
+    throw error;
+  }
+};
