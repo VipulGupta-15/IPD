@@ -15,7 +15,7 @@ import { uploadPDF, generateMCQs, MCQ } from '@/services/api';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api" || "https://backend-crc4.onrender.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "https://backend-yy2h.onrender.com/api" ||"http://localhost:5001/api";
 
 const generateSchema = z.object({
   testName: z.string().min(3, 'Test name must be at least 3 characters'),
